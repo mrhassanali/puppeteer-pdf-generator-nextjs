@@ -2,3 +2,4 @@
 
 export const API_BASE_URL = "/api";
 export const DOWNLOAD_PDF_API_URL = `${API_BASE_URL}/download-pdf`;
+export const DOWNLOAD_MARKDOWN_PDF_API_URL = `${API_BASE_URL}/download-markdown-pdf`;

@@ -1,6 +1,6 @@
 "use client";
 
-import { DOWNLOAD_PDF_API_URL } from "@/constants/apiEndpoints";
+import { DOWNLOAD_MARKDOWN_PDF_API_URL, DOWNLOAD_PDF_API_URL } from "@/constants/apiEndpoints";
 import { useState } from "react";
 
 export default function Home() {
@@ -41,7 +41,7 @@ export default function Home() {
     setIsDownloadingMarkdown(true);
     try {
       // Replace with your actual endpoint for Markdown PDF
-      const response = await fetch("/api/download-markdown-pdf", {
+      const response = await fetch(DOWNLOAD_MARKDOWN_PDF_API_URL, {
         method: "GET",
         headers: {
           "Content-Type": "application/pdf",
