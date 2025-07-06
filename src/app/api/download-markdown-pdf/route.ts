@@ -7,6 +7,8 @@ import { marked } from "marked";
 
 export const GET = async (req: NextRequest) => {
 
+  console.log(req)
+
     const pdfId = Math.random().toString(36).substring(2, 15);
 
 

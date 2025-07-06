@@ -32,6 +32,7 @@ export default function Home() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
+      console.log(error)
     } finally {
       setIsDownloading(false);
     }
@@ -65,6 +66,7 @@ export default function Home() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
+      console.log(error)
     } finally {
       setIsDownloadingMarkdown(false);
     }
