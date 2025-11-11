@@ -165,6 +165,7 @@ export const GET = async (req: NextRequest) => {
       };
 
     if (isVercel) {
+      console.log("Running in Vercel environment");
       // Vercel: Use puppeteer-core with downloaded Chromium binary
       const chromium = (await import("@sparticuz/chromium-min")).default;
       puppeteer = await import("puppeteer-core");
@@ -176,6 +177,7 @@ export const GET = async (req: NextRequest) => {
       };
       console.log("Launching browser with executable path:", executablePath);
     } else {
+      console.log("Running in local environment");
       // Local: Use regular puppeteer with bundled Chromium
       puppeteer = await import("puppeteer");
     }
