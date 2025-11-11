@@ -24,7 +24,7 @@ async function getChromiumPath(): Promise<string> {
   if (!downloadPromise) {
     const chromium = (await import("@sparticuz/chromium-min")).default;
     downloadPromise = chromium
-      .executablePath(CHROMIUM_PACK_URL)
+      .executablePath("https://github.com/gabenunez/puppeteer-on-vercel/raw/refs/heads/main/example/chromium-dont-use-in-prod.tar")
       .then((path) => {
         cachedExecutablePath = path;
         console.log("Chromium path resolved:", path);
