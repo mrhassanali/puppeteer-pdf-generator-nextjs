@@ -1,51 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import PuppeteerService from "@/lib/PuppeteerService";
+import {NextResponse } from "next/server";
 
-import { NextRequest, NextResponse } from "next/server";
-
-// URL to the Chromium binary package hosted in /public, if not in production, use a fallback URL
-// alternatively, you can host the chromium-pack.tar file elsewhere and update the URL below
-// const CHROMIUM_PACK_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
-//   ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/chromium-pack.tar`
-//   : "https://github.com/gabenunez/puppeteer-on-vercel/raw/refs/heads/main/example/chromium-dont-use-in-prod.tar";
-
-// Cache the Chromium executable path to avoid re-downloading on subsequent requests
-let cachedExecutablePath: string | null = null;
-let downloadPromise: Promise<string> | null = null;
-
-/**
- * Downloads and caches the Chromium executable path.
- * Uses a download promise to prevent concurrent downloads.
- */
-async function getChromiumPath(): Promise<string> {
-  // Return cached path if available
-  if (cachedExecutablePath) return cachedExecutablePath;
-
-  // Prevent concurrent downloads by reusing the same promise
-  if (!downloadPromise) {
-    const chromium = (await import("@sparticuz/chromium-min")).default;
-    downloadPromise = chromium
-      .executablePath("https://github.com/gabenunez/puppeteer-on-vercel/raw/refs/heads/main/example/chromium-dont-use-in-prod.tar")
-      .then((path) => {
-        cachedExecutablePath = path;
-        console.log("Chromium path resolved:", path);
-        return path;
-      })
-      .catch((error) => {
-        console.error("Failed to get Chromium path:", error);
-        downloadPromise = null; // Reset on error to allow retry
-        throw error;
-      });
-  }
-
-  return downloadPromise;
-}
-
-export const GET = async (req: NextRequest) => {
-  console.log(req);
-
+export const GET = async () => {
   const pdfId = Math.random().toString(36).substring(2, 15);
-
-  let browser;
 
   try {
     const htmlContent = `
@@ -157,48 +114,8 @@ export const GET = async (req: NextRequest) => {
     </html>
   `;
 
-    // Configure browser based on environment
-    const isVercel = !!process.env.VERCEL_ENV;
-    let puppeteer: any,
-      launchOptions: any = {
-        headless: true,
-      };
-
-    if (isVercel) {
-      console.log("Running in Vercel environment");
-      // Vercel: Use puppeteer-core with downloaded Chromium binary
-      const chromium = (await import("@sparticuz/chromium-min")).default;
-      puppeteer = await import("puppeteer-core");
-      const executablePath = await getChromiumPath();
-      launchOptions = {
-        ...launchOptions,
-        args: chromium.args,
-        executablePath,
-      };
-      console.log("Launching browser with executable path:", executablePath);
-    } else {
-      console.log("Running in local environment");
-      // Local: Use regular puppeteer with bundled Chromium
-      puppeteer = await import("puppeteer");
-    }
-
-    // Launch browser and capture screenshot
-    browser = await puppeteer.launch(launchOptions);
-
-    const page = await browser.newPage();
-    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "20px",
-        right: "20px",
-        bottom: "20px",
-        left: "20px",
-      },
-    });
-    await browser.close();
+    const service = PuppeteerService.getInstance();
+    const pdfBuffer = await service.generatePdfFromHtml(htmlContent);
 
     return new NextResponse(pdfBuffer, {
       status: 200,
