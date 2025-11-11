@@ -1,12 +1,51 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { NextRequest, NextResponse } from "next/server";
 
-import puppeteer from "puppeteer";
+// URL to the Chromium binary package hosted in /public, if not in production, use a fallback URL
+// alternatively, you can host the chromium-pack.tar file elsewhere and update the URL below
+const CHROMIUM_PACK_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/chromium-pack.tar`
+  : "https://github.com/gabenunez/puppeteer-on-vercel/raw/refs/heads/main/example/chromium-dont-use-in-prod.tar";
+
+// Cache the Chromium executable path to avoid re-downloading on subsequent requests
+let cachedExecutablePath: string | null = null;
+let downloadPromise: Promise<string> | null = null;
+
+/**
+ * Downloads and caches the Chromium executable path.
+ * Uses a download promise to prevent concurrent downloads.
+ */
+async function getChromiumPath(): Promise<string> {
+  // Return cached path if available
+  if (cachedExecutablePath) return cachedExecutablePath;
+
+  // Prevent concurrent downloads by reusing the same promise
+  if (!downloadPromise) {
+    const chromium = (await import("@sparticuz/chromium-min")).default;
+    downloadPromise = chromium
+      .executablePath(CHROMIUM_PACK_URL)
+      .then((path) => {
+        cachedExecutablePath = path;
+        console.log("Chromium path resolved:", path);
+        return path;
+      })
+      .catch((error) => {
+        console.error("Failed to get Chromium path:", error);
+        downloadPromise = null; // Reset on error to allow retry
+        throw error;
+      });
+  }
+
+  return downloadPromise;
+}
 
 export const GET = async (req: NextRequest) => {
+  console.log(req);
 
-  console.log(req)
+  const pdfId = Math.random().toString(36).substring(2, 15);
 
-    const pdfId = Math.random().toString(36).substring(2, 15);
+  let browser;
 
   try {
     const htmlContent = `
@@ -118,24 +157,31 @@ export const GET = async (req: NextRequest) => {
     </html>
   `;
 
-    const browser = await puppeteer.launch({
-      headless: true,
-      // If used puppeteer-core, ensure you have the correct channel or executable path for Chrome
-    //   channel: "chrome", 
-      // If you are used the puppeteer then need to modify the executablePath
-    //   executablePath: '/home/hassanali/.cache/puppeteer/chrome/linux-138.0.7204.92/chrome-linux64/chrome',
-      args: ['--no-sandbox'],
-    //   args: [
-    //     "--no-sandbox",
-    //     "--disable-setuid-sandbox",
-    //     "--disable-dev-shm-usage",
-    //     "--disable-accelerated-2d-canvas",
-    //     "--no-first-run",
-    //     "--no-zygote",
-    //     "--single-process",
-    //     "--disable-gpu",
-    //   ],
-    });
+    // Configure browser based on environment
+    const isVercel = !!process.env.VERCEL_ENV;
+    let puppeteer: any,
+      launchOptions: any = {
+        headless: true,
+      };
+
+    if (isVercel) {
+      // Vercel: Use puppeteer-core with downloaded Chromium binary
+      const chromium = (await import("@sparticuz/chromium-min")).default;
+      puppeteer = await import("puppeteer-core");
+      const executablePath = await getChromiumPath();
+      launchOptions = {
+        ...launchOptions,
+        args: chromium.args,
+        executablePath,
+      };
+      console.log("Launching browser with executable path:", executablePath);
+    } else {
+      // Local: Use regular puppeteer with bundled Chromium
+      puppeteer = await import("puppeteer");
+    }
+
+    // Launch browser and capture screenshot
+    browser = await puppeteer.launch(launchOptions);
 
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: "networkidle0" });
@@ -168,7 +214,7 @@ export const GET = async (req: NextRequest) => {
       },
       {
         status: 500,
-      },
+      }
     );
   }
 };
